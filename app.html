@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Judges Panel — Scoring</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <a class="topbar-brand" href="index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+    </svg>
+    Judges Panel
+  </a>
+  <div class="topbar-right">
+    <span class="judge-badge" id="judge-label">—</span>
+    <button class="btn-leaderboard" id="btn-leaderboard" onclick="showLeaderboard()">🏆 My Leaderboard</button>
+    <button class="btn-logout" id="btn-logout">Sign out</button>
+  </div>
+</div>
+
+
+<!-- Application Layout -->
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h2>Candidates</h2>
+      <input class="search-input" type="text" id="search" placeholder="Search…">
+    </div>
+    <div class="candidate-list" id="candidate-list">
+      <div style="padding:1rem; font-size:13px; color:rgba(255,255,255,0.3)">Loading…</div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="progress-info" id="progress-text">— of — scored</div>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Scoring Panel -->
+  <div class="scoring-panel">
+    <div class="empty-state" id="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+      <p>Select a candidate from the list<br>to begin scoring</p>
+    </div>
+    <div id="scoring-area" style="display:none"></div>
+  </div>
+</div>
+
+
+<!-- Leaderboard -->
+<div id="leaderboard-overlay" class="lb-overlay">
+  <div class="lb-modal">
+    <div class="lb-modal-header">
+      <div class="lb-modal-title">🏆 My Leaderboard</div>
+      <button onclick="closeLeaderboard()" class="lb-close">×</button>
+    </div>
+    <div id="leaderboard-body" class="lb-modal-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+<script>
+  //Authentication -----------------------------------------------------------------------------------------------
+  const judgeId   = sessionStorage.getItem('judgeId');
+  const judgeName = sessionStorage.getItem('judgeName');
+  const password  = sessionStorage.getItem('password');
+
+  if (!judgeId) { window.location.href = 'index.html'; }
+  document.getElementById('judge-label').textContent = judgeName;
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    sessionStorage.clear(); window.location.href = 'index.html';
+  });
+
+  //State -------------------------------------------------------------------------------------------------------------
+  let config       = null;
+  let candidates   = [];
+  let myScores     = {};
+  let selected     = null;
+  let draftScores  = {};
+  let timerInterval = null;
+
+  //Boot --------------------------------------------------------------------------------------------------------------
+  async function boot() {
+    try {
+      const [cfgRes, scoresRes] = await Promise.all([
+        fetch('/api/config'),
+        fetch('/api/scores/mine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ judgeId, password }),
+        }),
+      ]);
+      config   = await cfgRes.json();
+      myScores = await scoresRes.json();
+
+      candidates = config.contestants.map(c => ({
+        id: c.id,
+        num: c.contestant_number,
+        name: c.name
+      }));
+
+      renderSidebar();
+      updateProgress();
+    } catch (e) {
+      showToast('Server error. Is server.js running?', true);
+    }
+  }
+
+
+  //Helper functions ----------------------------------------------------------------------------------------------------------------------------
+  function isLocked(candId) {
+    const s = myScores[candId];
+    if (!s || !s.submittedAt) return false;
+    return Date.now() - s.submittedAt >= config.editWindowMs;
+  }
+  function isSubmitted(candId) { return !!myScores[candId]?.submittedAt; }
+
+  //Sidebar rendering -------------------------------------------------------------------------------------------------------------------
+  function renderSidebar() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const list = document.getElementById('candidate-list');
+    list.innerHTML = '';
+
+    candidates.filter(c => c.name.toLowerCase().includes(q)).forEach(cand => {
+      const scored   = !!myScores[cand.id];
+      const locked   = isLocked(cand.id);
+      const isActive = selected?.id === cand.id;
+
+      const el = document.createElement('div');
+      el.className = `candidate-item${isActive ? ' active' : ''}${locked ? ' locked' : scored ? ' scored' : ''}`;
+      el.innerHTML = `
+        <div class="cand-avatar">${String(cand.num).padStart(2,'0')}</div>
+        <div class="cand-info">
+          <div class="cand-name">${cand.name}</div>
+          <div class="cand-num">#${cand.num}</div>
+        </div>
+        <div><div class="status-dot ${locked ? 'locked' : scored ? 'scored' : ''}"></div></div>
+      `;
+      el.addEventListener('click', () => selectCandidate(cand));
+      list.appendChild(el);
+    });
+  }
+
+  //Updating the progress --------------------------------------------------------------------------------------------------------------
+  function updateProgress() {
+    const scored = candidates.filter(c => !!myScores[c.id]).length;
+    const pct = candidates.length ? (scored / candidates.length * 100).toFixed(0) : 0;
+    document.getElementById('progress-text').textContent = `${scored} of ${candidates.length} scored`;
+    document.getElementById('progress-fill').style.width = pct + '%';
+  }
+
+  document.getElementById('search').addEventListener('input', renderSidebar);
+
+  //Selecting a Candidate -------------------------------------------------------------------------------------------------------------
+  function selectCandidate(cand) {
+    clearInterval(timerInterval);
+    selected = cand;
+
+    const saved = myScores[cand.id];
+    draftScores = saved
+      ? { ...saved.scores }
+      : Object.fromEntries(config.categories.map(c => [String(c.id), 0]));
+
+    renderSidebar();
+    renderScoringArea();
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('scoring-area').style.display = 'block';
+
+    if (saved?.submittedAt && !isLocked(cand.id)) {
+      startTimer(saved.submittedAt);
+    }
+  }
+
+
+  //Scoring area -------------------------------------------------------------------------------------------------------------------------------------
+  function renderScoringArea() {
+    const cand   = selected;
+    const locked = isLocked(cand.id);
+    const submitted = isSubmitted(cand.id);
+    const area   = document.getElementById('scoring-area');
+
+    const total = Object.values(draftScores).reduce((a, b) => a + b, 0);
+    const avg   = (total / config.categories.length).toFixed(1);
+
+    area.innerHTML = `
+      <div class="scoring-header">
+        <div class="scoring-title">
+          <h2>${cand.name}</h2>
+          <p>Candidate #${cand.num} — Score each category from 0 to 10</p>
+        </div>
+        <div class="timer-badge ${locked ? 'locked-state' : submitted ? 'urgent' : ''}" id="timer-badge">
+          ${locked ? '🔒 Scores locked' : submitted ? '' : '📝 Draft'}
+        </div>
+      </div>
+
+      <div class="category-grid">
+        ${config.categories.map(cat => renderCategoryCard(cat, locked)).join('')}
+      </div>
+
+      <div class="totals-card">
+        <div>
+          <div class="total-label">Total Score</div>
+          <div class="total-value" id="total-val">${total}<span> / ${config.categories.length * 10}</span></div>
+        </div>
+        <div>
+          <div class="total-label">Average</div>
+          <div class="total-value" id="avg-val">${avg}<span> / 10</span></div>
+        </div>
+        <div class="totals-cats" id="mini-cats">
+          ${config.categories.map(cat => `
+            <div class="mini-total">
+              <div class="mini-label">${cat.name.split(' ')[0]}</div>
+              <div class="mini-val" id="mini_${cat.id}">${draftScores[cat.id] || 0}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="action-bar">
+        ${locked ? `
+          <div class="locked-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0110 0v4"/>
+            </svg>
+            Scores for this candidate are locked and cannot be changed.
+          </div>
+        ` : `
+          <button class="btn-submit" id="btn-submit">${submitted ? 'Save Changes' : 'Submit Scores'}</button>
+          <button class="btn-clear" id="btn-clear">Clear all</button>
+        `}
+      </div>
+    `;
+
+    config.categories.forEach(cat => {
+      const slider = document.getElementById(`slider_${cat.id}`);
+      if (slider) {
+        slider.addEventListener('input', () => {
+          draftScores[cat.id] = parseInt(slider.value);
+          updateCatDisplay(cat.id);
+          updateTotalsDisplay();
+        });
+      }
+    });
+
+    if (!locked) {
+      document.getElementById('btn-submit').onclick = submitScores;
+      document.getElementById('btn-clear').onclick = () => {
+        draftScores = Object.fromEntries(config.categories.map(c => [c.id, 0]));
+        renderScoringArea();
+      };
+    }
+  }
+
+  function renderCategoryCard(cat, locked) {
+    const val  = draftScores[cat.id] || 0;
+    const pips = Array.from({length: 10}, (_, i) =>
+      `<div class="pip ${i < val ? 'active' : ''}"></div>`).join('');
+    return `
+      <div class="category-card ${locked ? 'locked' : ''}">
+        <div class="cat-header">
+          <div>
+            <div class="cat-name">${cat.name}</div>
+            <div class="cat-desc">${cat.desc}</div>
+          </div>
+          <div class="cat-score-display ${val === 0 ? 'zero' : ''}" id="disp_${cat.id}">${val || '—'}</div>
+        </div>
+        <input class="score-slider" type="range" min="0" max="10" step="1"
+          value="${val}" id="slider_${cat.id}" ${locked ? 'disabled' : ''}>
+        <div class="score-labels"><span>0</span><span>5</span><span>10</span></div>
+        <div class="score-pips" id="pips_${cat.id}">${pips}</div>
+      </div>
+    `;
+  }
+
+  function updateCatDisplay(catId) {
+    const val = draftScores[catId] || 0;
+    const disp = document.getElementById(`disp_${catId}`);
+    if (disp) { disp.textContent = val || '—'; disp.className = `cat-score-display ${val === 0 ? 'zero' : ''}`; }
+    const pipsEl = document.getElementById(`pips_${catId}`);
+    if (pipsEl) pipsEl.innerHTML = Array.from({length:10}, (_, i) =>
+      `<div class="pip ${i < val ? 'active' : ''}"></div>`).join('');
+    const mini = document.getElementById(`mini_${catId}`);
+    if (mini) mini.textContent = val;
+  }
+
+  function updateTotalsDisplay() {
+    const total = Object.values(draftScores).reduce((a, b) => a + b, 0);
+    const avg   = (total / config.categories.length).toFixed(1);
+    const tv = document.getElementById('total-val');
+    const av = document.getElementById('avg-val');
+    if (tv) tv.innerHTML = `${total}<span> / ${config.categories.length * 10}</span>`;
+    if (av) av.innerHTML = `${avg}<span> / 10</span>`;
+  }
+
+  //Submit logic -------------------------------------------------------------------------------------------------------------------------------------
+  async function submitScores() {
+    const cand = selected;
+    const btn  = document.getElementById('btn-submit');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+    try {
+      const res = await fetch('/api/scores/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ judgeId, password, contestantId: cand.id, scores: draftScores }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      myScores[cand.id] = { scores: { ...draftScores }, submittedAt: data.submittedAt };
+      if (btn) { btn.disabled = false; btn.textContent = 'Save Changes'; }
+      renderSidebar();
+      updateProgress();
+      showToast('Scores saved ✓');
+
+      //Start timer......................................................................................
+      if (!isLocked(cand.id)) startTimer(data.submittedAt);
+
+    } catch (e) {
+      showToast(e.message || 'Failed to save scores.', true);
+      if (btn) { btn.disabled = false; btn.textContent = 'Submit Scores'; }
+      if (e.message?.includes('locked')) renderScoringArea();
+    }
+  }
+
+  //Timer function -------------------------------------------------------------------------------------------------------------------------------------
+  function startTimer(submittedAt) {
+
+    clearInterval(timerInterval);
+
+    function tick() {
+      const remaining = config.editWindowMs - (Date.now() - submittedAt);
+      const badge = document.getElementById('timer-badge');
+      console.log('tick', { badge: !!badge, remaining });
+
+      if (!badge) { clearInterval(timerInterval); return; }
+
+      if (remaining <= 0) {
+        clearInterval(timerInterval);
+        myScores[selected.id].submittedAt = submittedAt;
+        renderScoringArea();
+        renderSidebar();
+        return;
+      }
+
+      const secs = Math.ceil(remaining / 1000);
+      const m = Math.floor(secs / 60), s = secs % 60;
+      badge.textContent = `⏱ ${m}:${String(s).padStart(2,'0')} to edit`;
+      badge.className = `timer-badge ${remaining < 15000 ? 'urgent' : ''}`;
+    }
+    tick();
+    timerInterval = setInterval(tick, 500);
+  }
+
+  function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast${isError ? ' error' : ''} show`;
+  setTimeout(() => t.className = t.className.replace(' show', ''), 3000);
+}
+
+
+
+//Leaderboard -------------------------------------------------------------------------------------------------------------------------------------
+function showLeaderboard() {
+    document.getElementById('leaderboard-overlay').classList.add('open');
+    renderLeaderboard();
+  }
+
+  function closeLeaderboard() {
+    document.getElementById('leaderboard-overlay').classList.remove('open');
+  }
+
+  document.getElementById('leaderboard-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeLeaderboard();
+  });
+
+function renderLeaderboard() {
+    const body = document.getElementById('leaderboard-body');
+    console.log('candidates:', candidates);
+    console.log('myScores:', myScores);
+
+    const scored = candidates
+      .filter(c => !!(myScores[c.id] || myScores[String(c.id)]))
+      .map(c => {
+        const entry = myScores[c.id] || myScores[String(c.id)];
+        const scores = Object.values(entry.scores);
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        return { ...c, avg: Math.round(avg * 100) / 100 };
+      })
+      .sort((a, b) => b.avg - a.avg);
+
+    const unscored = candidates.filter(c => !(myScores[c.id] || myScores[String(c.id)]));
+
+    const groups = [];
+    let rank = 1;
+    let i = 0;
+    while (i < scored.length) {
+      const avg = scored[i].avg;
+      const group = [];
+      while (i < scored.length && scored[i].avg === avg) {
+        group.push(scored[i]);
+        i++;
+      }
+      groups.push({ rank, avg, members: group });
+      rank += group.length;
+    }
+
+    let html = '';
+
+    if (groups.length === 0) {
+      html = `<div style="text-align:center; color:var(--text-muted); padding:2rem; font-size:14px;">No scores submitted yet.</div>`;
+    } else {
+      groups.forEach(group => {
+        const rankClass = group.rank === 1 ? 'gold' : group.rank === 2 ? 'silver' : group.rank === 3 ? 'bronze' : 'other';
+        const rankEmoji = group.rank === 1 ? '🥇' : group.rank === 2 ? '🥈' : group.rank === 3 ? '🥉' : `#${group.rank}`;
+        const tiedLabel = group.members.length > 1 ? ` &nbsp;·&nbsp; <span style="font-weight:400">Tied</span>` : '';
+
+        html += `
+          <div class="lb-rank-group">
+            <div class="lb-rank-header ${rankClass}">
+              ${rankEmoji} &nbsp; Place ${group.rank}${tiedLabel} &nbsp;·&nbsp; avg <strong>${group.avg.toFixed(2)}</strong> / 10
+            </div>
+            ${group.members.map(c => `
+              <div class="lb-contestant">
+                <div>
+                  <div class="lb-name">${c.name}</div>
+                  <div class="lb-num">#${c.num}</div>
+                </div>
+                <div class="lb-avg">${group.avg.toFixed(2)}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      });
+    }
+
+    if (unscored.length > 0) {
+      html += `<div class="lb-unscored-header">Not yet scored (${unscored.length})</div>`;
+      unscored.forEach(c => {
+        html += `
+          <div class="lb-unscored-item">
+            <span>${c.name} <span style="font-size:11px">#${c.num}</span></span>
+            <span style="font-size:12px">—</span>
+          </div>
+        `;
+      });
+    }
+
+    body.innerHTML = html;
+  }
+
+
+  boot();
+</script>
+</body>
+</html>
+
+
+
+
+

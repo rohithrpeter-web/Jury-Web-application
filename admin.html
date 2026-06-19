@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-topbar {
+      background: #ef6406f0;
+      border-bottom: 1px solid rgba(180, 120, 60, 0.4);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .admin-topbar-brand {
+      font-size: 15px; font-weight: 600; color: #000000;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .admin-topbar .btn-logout {
+      border-color: rgba(0,0,0,0.4);
+      color: #000;
+      background: #fff;
+    }
+    .admin-topbar .btn-logout:hover {
+      background: rgba(0,0,0,0.1);
+      color: #000;
+    }
+    .admin-topbar .judge-badge {
+      background: #3bf7f7;
+      border-color: #31c5c5;
+      color: #050505;
+    }
+    .admin-body {
+      padding: 2rem;
+      background: var(--surface-2);
+      min-height: calc(100vh - 56px);
+    }
+    .admin-title {
+      font-size: 22px; font-weight: 700; color: var(--navy);
+      margin-bottom: 1.5rem;
+    }
+
+    /* Contestant card */
+    .contestant-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+    .contestant-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 1.5rem;
+      background: var(--navy);
+      cursor: pointer;
+      user-select: none;
+    }
+    .contestant-card-header:hover { background: var(--navy-light); }
+    .contestant-header-left { display: flex; align-items: center; gap: 12px; }
+    .contestant-rank {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 800;
+      background: var(--navy-light); color: rgba(255,255,255,0.6);
+      flex-shrink: 0;
+    }
+    .contestant-rank.gold   { background: var(--gold); color: var(--navy); }
+    .contestant-rank.silver { background: #aaa; color: #fff; }
+    .contestant-rank.bronze { background: #cd7f32; color: #fff; }
+    .contestant-card-name { font-size: 15px; font-weight: 600; color: #fff; }
+    .contestant-card-num  { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .contestant-header-right { display: flex; align-items: center; gap: 16px; }
+    .total-score-badge {
+      background: rgba(196,154,42,0.2);
+      border: 1px solid rgba(196,154,42,0.4);
+      color: var(--gold);
+      padding: 4px 14px; border-radius: 20px;
+      font-size: 14px; font-weight: 700;
+    }
+    .judges-done {
+      font-size: 12px; color: rgba(255,255,255,0.4);
+    }
+    .expand-arrow {
+      color: rgba(255,255,255,0.4); font-size: 12px; transition: transform 0.2s;
+    }
+    .contestant-card.open .expand-arrow { transform: rotate(180deg); }
+
+
+    /* Judges rows/columns table */
+    .judge-table { width: 100%; border-collapse: collapse; }
+    .judge-table th {
+      padding: 8px 14px; font-size: 11px; font-weight: 600;
+      color: var(--text-muted); text-transform: uppercase;
+      letter-spacing: 0.06em; text-align: left;
+      background: var(--surface-3); border-bottom: 1px solid var(--border);
+    }
+    .judge-table th.right { text-align: right; }
+    .judge-table td {
+      padding: 10px 14px; font-size: 13px; color: var(--text);
+      border-bottom: 1px solid var(--border);
+    }
+    .judge-table td.right { text-align: right; }
+    .judge-table tr:last-child td { border-bottom: none; }
+    .judge-table tr:hover td { background: var(--surface-2); }
+    .not-graded { color: var(--text-muted); font-style: italic; }
+    .judge-avg  { font-weight: 700; color: var(--navy); }
+    .cat-score  { color: var(--text-mid); }
+
+
+    /* Tied banner logic */
+    .tied-banner {
+      display: inline-block;
+      font-size: 11px; font-weight: 600;
+      background: rgba(196,154,42,0.15);
+      color: var(--gold-dark);
+      border-radius: 10px; padding: 2px 8px;
+      margin-left: 8px; vertical-align: middle;
+    }
+
+
+    /* Stats Summary */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px; margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: #fa9600; border: 1px solid #ff9500;
+      border-radius: var(--radius); padding: 1rem 1.25rem;
+    }
+    .stat-label {
+      font-size: 11px; font-weight: 600; color: #000;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+    }
+    .stat-val { font-size: 26px; font-weight: 700; color: var(--navy); }
+
+    .collapse-body { display: none; }
+    .contestant-card.open .collapse-body { display: block; }
+
+    .loading {
+      text-align: center; padding: 4rem; color: var(--text-muted); font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+
+
+<!-- Top Bar -->
+<div class="admin-topbar">
+  <div class="admin-topbar-brand">🛡️🛠️ Admin Panel</div>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <span class="judge-badge" id="admin-label">Admin</span>
+    <button class="btn-logout" onclick="logout()">Sign out</button>
+  </div>
+</div>
+
+<div class="admin-body">
+  <div id="admin-content">
+    <div class="loading">Loading results…</div>
+  </div>
+</div>
+
+<script>
+  if (!sessionStorage.getItem('isAdmin')) {
+    window.location.href = 'index.html';
+  }
+
+  function logout() {
+    sessionStorage.clear();
+    window.location.href = 'index.html';
+  }
+
+  //Load the data ------------------------------------------------------------------------------------
+  async function loadResults() {
+    try {
+      const res = await fetch('/api/results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      render(data);
+    } catch (e) {
+      document.getElementById('admin-content').innerHTML =
+        `<div class="loading">Failed to load results. Is the server running?</div>`;
+    }
+  }
+
+  //Render ------------------------------------------------------------------------------------------------
+  function render({ judges, contestants, categories, scoresMap }) {
+    const content = document.getElementById('admin-content');
+
+    //Compute the total score per contestant.
+    const ranked = contestants.map(c => {
+      const judgeEntries = judges.map(j => {
+
+        const catScores = scoresMap[c.id]?.[j.id];
+        if (!catScores) return { judge: j, graded: false, catScores: null, total: 0, avg: null };
+        const vals = Object.values(catScores);
+        const total = vals.reduce((a, b) => a + b, 0);
+        const avg = total / categories.length;
+
+        return { judge: j, graded: true, catScores, total, avg };
+      });
+
+      const gradedEntries = judgeEntries.filter(e => e.graded);
+      const grandTotal = gradedEntries.reduce((a, e) => a + e.total, 0);
+      const gradedCount = gradedEntries.length;
+
+      return { contestant: c, judgeEntries, grandTotal, gradedCount };
+    }).sort((a, b) => {
+
+      //Order from greatest to lowest...
+      if (a.gradedCount === 0 && b.gradedCount === 0) return a.contestant.contestant_number - b.contestant.contestant_number;
+      if (a.gradedCount === 0) return 1;
+      if (b.gradedCount === 0) return -1;
+      return b.grandTotal - a.grandTotal;
+    });
+
+    
+    //Assigning the ranks (The ties share the same rank logic)......
+    let i = 0;
+    let rankPos = 1;
+
+    while (i < ranked.length) {
+      if (ranked[i].gradedCount === 0) { ranked[i].rank = null; i++; continue; }
+
+      //Check the no. of contestants sharing the same score.
+      let j = i;
+      while (j < ranked.length && ranked[j].gradedCount > 0 && ranked[j].grandTotal === ranked[i].grandTotal) {
+        j++;
+      }
+      const groupSize = j - i;
+
+      //Assign same rank to all in the same rank group.
+      for (let k = i; k < j; k++) {
+        ranked[k].rank = rankPos;
+        if (groupSize > 1) ranked[k].tied = true;
+      }
+      rankPos++;
+      i = j;
+    }
+
+    const totalGraded = ranked.filter(r => r.gradedCount > 0).length;
+
+    //Stats ---------------------------------------------------------------------------------------------------------------------
+    let html = `
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-label">Contestants</div><div class="stat-val">${contestants.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Judges</div><div class="stat-val">${judges.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Categories</div><div class="stat-val">${categories.length}</div></div>
+        <div class="stat-card"><div class="stat-label">Contestants Graded</div><div class="stat-val">${totalGraded}</div></div>
+      </div>
+      <div class="admin-title">Contestant Rankings</div>
+    `;
+
+    //Contestant cards -------------------------------------------------------------------------------------------------------------
+    ranked.forEach((r, idx) => {
+
+      const c = r.contestant;
+      const rankClass = r.rank === 1 ? 'gold' : r.rank === 2 ? 'silver' : r.rank === 3 ? 'bronze' : '';
+      const rankLabel = r.rank ? (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`) : '—';
+      const tiedBadge = r.tied ? `<span class="tied-banner">Tied</span>` : '';
+      const scoreDisplay = r.gradedCount > 0 ? `${r.grandTotal} pts` : '—';
+
+      //Category header columns................................
+      const catHeaders = categories.map(cat =>
+        `<th class="right">${cat.name}</th>`).join('');
+
+      //Judge's rows............................................
+      const judgeRows = r.judgeEntries.map(e => {
+        if (!e.graded) {
+          return `
+            <tr>
+              <td>${e.judge.name}</td>
+              <td colspan="${categories.length + 2}" class="not-graded">Not graded yet</td>
+            </tr>`;
+        }
+        const catCells = categories.map(cat =>
+          `<td class="right cat-score">${e.catScores[cat.id] ?? '—'}</td>`).join('');
+        return `
+          <tr>
+            <td>${e.judge.name}</td>
+            ${catCells}
+            <td class="right">${e.total}</td>
+            <td class="right judge-avg">${e.avg.toFixed(2)}</td>
+          </tr>`;
+      }).join('');
+
+      html += `
+        <div class="contestant-card" id="card_${c.id}">
+          <div class="contestant-card-header" onclick="toggleCard('card_${c.id}')">
+            <div class="contestant-header-left">
+              <div class="contestant-rank ${rankClass}">${rankLabel}</div>
+              <div>
+                <div class="contestant-card-name">${c.name} ${tiedBadge}</div>
+                <div class="contestant-card-num">#${c.contestant_number}</div>
+              </div>
+            </div>
+            <div class="contestant-header-right">
+              <div class="total-score-badge">${scoreDisplay}</div>
+              <div class="judges-done">${r.gradedCount} / ${judges.length} judges</div>
+              <div class="expand-arrow">▼</div>
+            </div>
+          </div>
+          <div class="collapse-body">
+            <table class="judge-table">
+              <thead>
+                <tr>
+                  <th>Judge</th>
+                  ${catHeaders}
+                  <th class="right">Total</th>
+                  <th class="right">Avg</th>
+                </tr>
+              </thead>
+              <tbody>${judgeRows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    });
+    console.log(ranked.map(r => ({ name: r.contestant.name, rank: r.rank, total: r.grandTotal })));
+    content.innerHTML = html;
+  }
+
+  function toggleCard(id) {
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  loadResults();
+
+  //Ten seconds refresh for updated results........................
+  setInterval(loadResults, 10000);
+</script>
+</body>
+</html>

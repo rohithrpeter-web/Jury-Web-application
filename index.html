@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judges Scoring System</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page-center">
+
+    <div class="login-card">
+
+        <div class="login-logo">
+            <h1>Judges Scoring System</h1>
+            <p>Please sign in to continue</p>
+        </div>
+
+        <div class="form-group">
+            <label>Username</label>
+            <input
+                type="text"
+                id="login-user"
+                placeholder="Enter username"
+                autocomplete="username"
+                autofocus>
+        </div>
+
+        <div class="form-group">
+            <label>Password</label>
+            <input
+                type="password"
+                id="login-pass"
+                placeholder="Enter password"
+                autocomplete="current-password">
+            <div class="error-msg" id="login-error" style="display:none"></div>
+        </div>
+
+        <button class="btn-primary" id="btn-login">Sign In</button>
+
+        <!-- Admin toggle link -->
+        <div class="bottom-link" style="margin-top:1rem;">
+            <a href="#" id="admin-login-link">Admin login →</a>
+        </div>
+
+        <!-- Admin login box: (hidden until line clicked) -->
+        <div id="admin-box" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
+            <div class="form-group">
+                <label>Admin Username</label>
+                <input type="text" id="admin-user" placeholder="Admin username">
+            </div>
+            <div class="form-group">
+                <label>Admin Password</label>
+                <input type="password" id="admin-pass-field" placeholder="Admin password">
+                <div class="error-msg" id="admin-error" style="display:none"></div>
+            </div>
+            <button class="btn-primary" id="btn-admin-login">Enter Admin Panel</button>
+        </div>
+    </div>
+</div>
+<script>
+
+
+//Judge login -------------------------------------------------------------------------------------------------------------------------------------
+const loginBtn      = document.getElementById('btn-login');
+const usernameInput = document.getElementById('login-user');
+const passwordInput = document.getElementById('login-pass');
+const errorBox      = document.getElementById('login-error');
+
+loginBtn.addEventListener('click', doLogin);
+usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+passwordInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+async function doLogin() {
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    errorBox.style.display = 'none';
+
+    if (!username) { showError('Please enter your username.'); usernameInput.focus(); return; }
+    if (!password) { showError('Please enter your password.'); passwordInput.focus(); return; }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'Signing In...';
+
+    try {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Login failed');
+
+        sessionStorage.setItem('judgeId',   data.judgeId);
+        sessionStorage.setItem('judgeName', data.judgeName);
+        sessionStorage.setItem('username',  username);
+        sessionStorage.setItem('password',  password);
+        window.location.href = 'app.html';
+
+    } catch (err) {
+        passwordInput.value = '';
+        showError(err.message || 'Login failed.');
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Sign In';
+        passwordInput.focus();
+    }
+}
+
+function showError(message) {
+    errorBox.textContent = message;
+    errorBox.style.display = 'block';
+}
+
+
+//Admin login ---------------------------------------------------------------------------------------------------------------------------------------
+const adminLink     = document.getElementById('admin-login-link');
+const adminBox      = document.getElementById('admin-box');
+const adminUserInput = document.getElementById('admin-user');
+const adminPassInput = document.getElementById('admin-pass-field');
+const adminError    = document.getElementById('admin-error');
+const adminBtn      = document.getElementById('btn-admin-login');
+
+adminLink.addEventListener('click', e => {
+    e.preventDefault();
+    adminBox.style.display = adminBox.style.display === 'none' ? 'block' : 'none';
+    if (adminBox.style.display === 'block') adminUserInput.focus();
+});
+
+adminBtn.addEventListener('click', doAdminLogin);
+adminPassInput.addEventListener('keydown', e => { if (e.key === 'Enter') doAdminLogin(); });
+adminUserInput.addEventListener('keydown', e => { if (e.key === 'Enter') doAdminLogin(); });
+
+async function doAdminLogin() {
+    const username = adminUserInput.value.trim();
+    const password = adminPassInput.value;
+    adminError.style.display = 'none';
+
+    if (!username) { adminError.textContent = 'Enter admin username.'; adminError.style.display = 'block'; return; }
+    if (!password) { adminError.textContent = 'Enter admin password.'; adminError.style.display = 'block'; return; }
+
+    adminBtn.disabled = true;
+    adminBtn.textContent = 'Verifying...';
+
+    try {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Invalid credentials');
+
+        sessionStorage.setItem('isAdmin', 'true');
+        window.location.href = 'admin.html';
+
+    } catch (err) {
+        adminPassInput.value = '';
+        adminError.textContent = err.message || 'Login failed.';
+        adminError.style.display = 'block';
+        adminBtn.disabled = false;
+        adminBtn.textContent = 'Enter Admin Panel';
+        adminPassInput.focus();
+    }
+}
+
+</script>
+</body>
+</html>
+
+
+
