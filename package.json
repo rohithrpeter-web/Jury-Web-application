@@ -1,15 +1,13 @@
 {
   "name": "music-judge-app",
   "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "better-sqlite3": "^12.10.0",
     "express": "^5.2.1"
