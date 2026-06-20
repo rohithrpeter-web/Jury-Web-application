@@ -301,6 +301,15 @@
   async function submitScores() {
     const cand = selected;
     const btn  = document.getElementById('btn-submit');
+
+    //Checking if all categories have been scored above zero...
+    const unscored = config.categories.filter(cat => !draftScores[cat.id] || draftScores[cat.id] <= 0);
+    if (unscored.length > 0) {
+      const names = unscored.map(c => c.name).join(', ');
+      showToast(`Please score all categories before submitting. Missing: ${names}`, true);
+      return;
+    }
+
     if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
     try {
@@ -327,6 +336,7 @@
       if (e.message?.includes('locked')) renderScoringArea();
     }
   }
+  
 
   //Timer function -------------------------------------------------------------------------------------------------------------------------------------
   function startTimer(submittedAt) {
