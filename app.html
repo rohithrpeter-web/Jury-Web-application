@@ -234,7 +234,6 @@
           </div>
         ` : `
           <button class="btn-submit" id="btn-submit">${submitted ? 'Save Changes' : 'Submit Scores'}</button>
-          <button class="btn-clear" id="btn-clear">Clear all</button>
         `}
       </div>
     `;
@@ -243,7 +242,7 @@
       const slider = document.getElementById(`slider_${cat.id}`);
       if (slider) {
         slider.addEventListener('input', () => {
-          draftScores[cat.id] = parseInt(slider.value);
+          draftScores[cat.id] = parseFloat(slider.value);
           updateCatDisplay(cat.id);
           updateTotalsDisplay();
         });
@@ -252,17 +251,13 @@
 
     if (!locked) {
       document.getElementById('btn-submit').onclick = submitScores;
-      document.getElementById('btn-clear').onclick = () => {
-        draftScores = Object.fromEntries(config.categories.map(c => [c.id, 0]));
-        renderScoringArea();
-      };
     }
   }
 
   function renderCategoryCard(cat, locked) {
     const val  = draftScores[cat.id] || 0;
-    const pips = Array.from({length: 10}, (_, i) =>
-      `<div class="pip ${i < val ? 'active' : ''}"></div>`).join('');
+    const pips = Array.from({length: 20}, (_, i) =>
+      `<div class="pip ${(i + 1) * 0.5 <= val ? 'active' : ''}"></div>`).join('');
     return `
       <div class="category-card ${locked ? 'locked' : ''}">
         <div class="cat-header">
@@ -272,7 +267,7 @@
           </div>
           <div class="cat-score-display ${val === 0 ? 'zero' : ''}" id="disp_${cat.id}">${val || '—'}</div>
         </div>
-        <input class="score-slider" type="range" min="0" max="10" step="1"
+        <input class="score-slider" type="range" min="0" max="10" step="0.5"
           value="${val}" id="slider_${cat.id}" ${locked ? 'disabled' : ''}>
         <div class="score-labels"><span>0</span><span>5</span><span>10</span></div>
         <div class="score-pips" id="pips_${cat.id}">${pips}</div>
@@ -285,9 +280,11 @@
     const disp = document.getElementById(`disp_${catId}`);
     if (disp) { disp.textContent = val || '—'; disp.className = `cat-score-display ${val === 0 ? 'zero' : ''}`; }
     const pipsEl = document.getElementById(`pips_${catId}`);
-    if (pipsEl) pipsEl.innerHTML = Array.from({length:10}, (_, i) =>
-      `<div class="pip ${i < val ? 'active' : ''}"></div>`).join('');
-    const mini = document.getElementById(`mini_${catId}`);
+
+    if (pipsEl) pipsEl.innerHTML = Array.from({length:20}, (_, i) =>
+      `<div class="pip ${(i + 1) * 0.5 <= val ? 'active' : ''}"></div>`).join('');
+    
+      const mini = document.getElementById(`mini_${catId}`);
     if (mini) mini.textContent = val;
   }
 

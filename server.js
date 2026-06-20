@@ -39,7 +39,7 @@ db.exec(`
     judge_id INTEGER NOT NULL,
     contestant_id INTEGER NOT NULL,
     category_id TEXT NOT NULL,
-    score INTEGER NOT NULL CHECK(score >= 0 AND score <= 10),
+    score REAL NOT NULL CHECK(score >= 0 AND score <= 10),
     submitted_at INTEGER,
     PRIMARY KEY (judge_id, contestant_id, category_id),
     FOREIGN KEY (judge_id) REFERENCES judges(id),
