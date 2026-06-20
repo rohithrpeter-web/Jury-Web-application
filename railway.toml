@@ -3,3 +3,4 @@ builder = "RAILPACK"
 
 [variables]
 RAILPACK_NODE_VERSION = "22"
+RAILPACK_BUILD_APT_PACKAGES = "python3 pkg-config gcc g++ make"
