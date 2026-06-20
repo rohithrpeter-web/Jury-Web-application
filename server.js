@@ -1,23 +1,19 @@
-// ─────────────────────────────────────────────
-// Judges Scoring System Server (better-sqlite3)
-// Run: node server.js
-// ─────────────────────────────────────────────
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+//Judges Scoring System Server (Using better-sqlite3)
+//Run in terminal: node server.js
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 const express = require('express');
 const Database = require('better-sqlite3');
 const path = require('path');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// ── CONFIG ───────────────────────────────────
 const EDIT_WINDOW_MS = 60 * 1000;
-
-// ── DB SETUP ────────────────────────────────
 const db = new Database('./judges.db');
 db.pragma('foreign_keys = ON');
 
-// ── CREATE TABLES ────────────────────────────
+
+//Creating the tables ---------------------------------------------------------------------------------------------------------------
 db.exec(`
   CREATE TABLE IF NOT EXISTS judges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +48,7 @@ db.exec(`
   );
 `);
 
-// ── SEED CATEGORIES ──────────────────────────
+
 const seedCategories = [
   ['swara',     'Swara',     'Pitch accuracy and note clarity'],
   ['taal',      'Taal',      'Rhythm and timing precision'],
@@ -63,12 +59,10 @@ const seedCategories = [
 
 const insertCat = db.prepare(`INSERT OR IGNORE INTO categories (id, name, desc) VALUES (?, ?, ?)`);
 seedCategories.forEach(c => insertCat.run(...c));
-
-// ── MIDDLEWARE ───────────────────────────────
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// ── LOGIN ────────────────────────────────────
+//Judge Login logic ---------------------------------------------------------------------------------------------------------------------------------------
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   try {
@@ -77,12 +71,14 @@ app.post('/api/login', (req, res) => {
     ).get(username, password);
     if (!judge) return res.status(401).json({ error: 'Error: The entered Username or Password is incorrect! Please try again.' });
     res.json({ ok: true, judgeId: judge.id, judgeName: judge.name });
-  } catch (e) {
+  } 
+  catch (e) {
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// ── ADMIN LOGIN ──────────────────────────────
+
+//Admin Login Logic ----------------------------------------------------------------------------------------------------------------------------------------------
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
   try {
@@ -91,43 +87,50 @@ app.post('/api/admin/login', (req, res) => {
     ).get(username, password);
     if (!judge) return res.status(401).json({ error: 'Invalid admin credentials' });
     res.json({ ok: true, adminName: judge.name });
-  } catch (e) {
+  } 
+  catch (e) {
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// ── CONFIG ───────────────────────────────────
+
 app.get('/api/config', (req, res) => {
   try {
     const categories  = db.prepare(`SELECT id, name, desc FROM categories`).all();
     const contestants = db.prepare(`SELECT id, contestant_number, name FROM contestants ORDER BY contestant_number`).all();
     res.json({ categories, contestants, editWindowMs: EDIT_WINDOW_MS });
-  } catch (e) {
+  } 
+  catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
 
-// ── GET MY SCORES ────────────────────────────
+
+//Getting the scores -----------------------------------------------------------------------------------------------------------------------------------
 app.post('/api/scores/mine', (req, res) => {
   const { judgeId } = req.body;
+
   try {
     const rows = db.prepare(
       `SELECT contestant_id, category_id, score, submitted_at FROM scores WHERE judge_id = ?`
     ).all(judgeId);
 
     const result = {};
+
     rows.forEach(r => {
       if (!result[r.contestant_id]) result[r.contestant_id] = { scores: {}, submittedAt: null };
       result[r.contestant_id].scores[r.category_id] = r.score;
       result[r.contestant_id].submittedAt = r.submitted_at;
     });
     res.json(result);
-  } catch (e) {
+  } 
+  catch (e) {
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// ── SUBMIT SCORES ────────────────────────────
+
+//Submitting scores logic ------------------------------------------------------------------------------------------------------------------------------
 app.post('/api/scores/submit', (req, res) => {
   const { judgeId, contestantId, scores } = req.body;
   const now = Date.now();
@@ -139,7 +142,6 @@ app.post('/api/scores/submit', (req, res) => {
 
     const submittedAt = existing?.submitted_at || now;
     const locked = existing && (now - existing.submitted_at >= EDIT_WINDOW_MS);
-
     if (locked) return res.status(403).json({ error: 'Edit window has closed' });
 
     const upsert = db.prepare(`
@@ -157,13 +159,16 @@ app.post('/api/scores/submit', (req, res) => {
 
     insertMany(Object.entries(scores));
     res.json({ ok: true, submittedAt, locked: false });
-  } catch (e) {
+  } 
+  catch (e) {
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// ── ADMIN RESULTS ────────────────────────────
+
+//Admin results panel ---------------------------------------------------------------------------------------------------------------------------------------
 app.post('/api/results', (req, res) => {
+
   try {
     const judges      = db.prepare(`SELECT id, name FROM judges WHERE is_admin = 0`).all();
     const contestants = db.prepare(`SELECT id, contestant_number, name FROM contestants ORDER BY contestant_number`).all();
@@ -171,6 +176,7 @@ app.post('/api/results', (req, res) => {
     const rows        = db.prepare(`SELECT judge_id, contestant_id, category_id, score FROM scores`).all();
 
     const scoresMap = {};
+
     rows.forEach(r => {
       if (!scoresMap[r.contestant_id]) scoresMap[r.contestant_id] = {};
       if (!scoresMap[r.contestant_id][r.judge_id]) scoresMap[r.contestant_id][r.judge_id] = {};
@@ -178,12 +184,14 @@ app.post('/api/results', (req, res) => {
     });
 
     res.json({ judges, contestants, categories, scoresMap });
-  } catch (e) {
+  } 
+  catch (e) {
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// ── START ────────────────────────────────────
+
+//Initiating the server ---------------------------------------------------------------------------------------------------------------------------------------
 app.listen(PORT, () => {
   console.log(`\n Judges system running at http://localhost:${PORT}`);
   console.log(`Database: judges.db`);
