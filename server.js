@@ -55,6 +55,8 @@ const seedCategories = [
   ['bhava',     'Bhava',     'Expression and emotional delivery'],
   ['complex',   'Complex',   'Technical difficulty and execution'],
   ['pronounce', 'Pronounce', 'Pronunciation clarity and diction'],
+  ['orchestra', 'Orchestra Compatibility', 'Coordinating with band and comfortable presentation'],
+  ['overall', 'Overall Performance', 'Presentation, Stage presence, and adding X factor']
 ];
 
 const insertCat = db.prepare(`INSERT OR IGNORE INTO categories (id, name, desc) VALUES (?, ?, ?)`);
