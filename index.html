@@ -152,6 +152,8 @@ async function doAdminLogin() {
         if (!res.ok) throw new Error(data.error || 'Invalid credentials');
 
         sessionStorage.setItem('isAdmin', 'true');
+        sessionStorage.setItem('adminUsername', username);
+        sessionStorage.setItem('adminPassword', password);
         window.location.href = 'admin.html';
 
     } catch (err) {
