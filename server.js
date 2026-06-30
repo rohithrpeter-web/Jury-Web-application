@@ -81,6 +81,92 @@ app.post('/api/login', (req, res) => {
 });
 
 
+//Making the Contestants and Judges ----------------------------------------------------------------------------------------------------------------------------------
+//Create new judge (admin only) ...................................................................................................
+app.post('/api/admin/create-judge', (req, res) => {
+  const { adminUsername, adminPassword, username, password, name } = req.body;
+
+  try {
+    const admin = db.prepare(
+      `SELECT id FROM judges WHERE username = ? AND password = ? AND is_admin = 1`
+    ).get(adminUsername, adminPassword);
+
+    if (!admin) return res.status(401).json({ error: 'Admin authentication failed' });
+
+    if (!username || !password || !name) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    //Check if username already exists.
+    const existing = db.prepare(`SELECT id FROM judges WHERE username = ?`).get(username);
+    if (existing) return res.status(409).json({ error: 'Username already exists' });
+
+    const insert = db.prepare(`INSERT INTO judges (username, password, name, is_admin) VALUES (?, ?, ?, 0)`);
+    const result = insert.run(username, password, name);
+
+    res.json({ ok: true, judgeId: result.lastInsertRowid, name, username });
+  } 
+  catch (e) {
+    res.status(500).json({ error: 'Database error: ' + e.message });
+  }
+});
+
+
+//List all judges (admin only) --------------------------------------------------------------------------------------------------------------------------------------
+app.post('/api/admin/judges-list', (req, res) => {
+  const { adminUsername, adminPassword } = req.body;
+
+  try {
+    const admin = db.prepare(
+      `SELECT id FROM judges WHERE username = ? AND password = ? AND is_admin = 1`
+    ).get(adminUsername, adminPassword);
+
+    if (!admin) return res.status(401).json({ error: 'Admin authentication failed' });
+
+    const judges = db.prepare(`SELECT name, username, password FROM judges WHERE is_admin = 0`).all();
+    res.json({ judges });
+  } 
+  catch (e) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+
+//Creating new contestant (admin only) ....................................................................................................
+app.post('/api/admin/create-contestant', (req, res) => {
+  const { adminUsername, adminPassword, name, ageGroup } = req.body;
+
+  try {
+    //Verify admin credentials.
+    const admin = db.prepare(
+      `SELECT id FROM judges WHERE username = ? AND password = ? AND is_admin = 1`
+    ).get(adminUsername, adminPassword);
+
+    if (!admin) return res.status(401).json({ error: 'Admin authentication failed' });
+
+    if (!name || !ageGroup) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (!['Junior', 'Youth', 'Adult'].includes(ageGroup)) {
+      return res.status(400).json({ error: 'Invalid age group' });
+    }
+
+    //Getting the next contestant number...
+    const maxNum = db.prepare(`SELECT MAX(contestant_number) as maxNum FROM contestants`).get();
+    const nextNumber = (maxNum.maxNum || 0) + 1;
+
+    const insert = db.prepare(`INSERT INTO contestants (contestant_number, name, age_group) VALUES (?, ?, ?)`);
+    const result = insert.run(nextNumber, name, ageGroup);
+
+    res.json({ ok: true, contestantId: result.lastInsertRowid, contestantNumber: nextNumber, name, ageGroup });
+  } 
+  catch (e) {
+    res.status(500).json({ error: 'Database error: ' + e.message });
+  }
+});
+
+
 //Admin Login Logic ----------------------------------------------------------------------------------------------------------------------------------------------
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;

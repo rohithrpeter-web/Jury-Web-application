@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Settings</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-topbar {
+      background: #4704c2f0;
+      border-bottom: 1px solid rgba(116, 60, 180, 0.4);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .admin-topbar-brand {
+      font-size: 15px; font-weight: 600; color: #000000;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .btn-back {
+      background: #fff; color: #000; border-color: rgba(0,0,0,0.4);
+      border: 1px solid rgba(0,0,0,0.4);
+      font-size: 12px; padding: 5px 12px; border-radius: 6px; cursor: pointer;
+    }
+    .btn-back:hover { background: rgba(0,0,0,0.1); }
+
+    .settings-body {
+      padding: 2rem;
+      background: #969696;
+      min-height: calc(100vh - 56px);
+      display: flex;
+      flex-direction: column;
+      gap: 6rem;
+      align-items: center;
+    }
+    .settings-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      width: 100%;
+      max-width: 480px;
+    }
+    .settings-card h2 {
+      font-size: 18px; font-weight: 700; color: var(--navy);
+      margin-bottom: 1.25rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="admin-topbar">
+  <div class="admin-topbar-brand">⚙️ Advanced Settings</div>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <button class="btn-back" onclick="showJudgesList()">👤 View Judges</button>
+    <button class="btn-back" onclick="showContestantsList()">🎤 View Contestants</button>
+    <button class="btn-back" onclick="window.location.href='admin.html'">← Back to Admin Panel</button>
+  </div>
+</div>
+
+<div class="settings-body">
+
+  <!-- Create Judge Card -->
+  <div class="settings-card" id="create-judge-card">
+    <h2>👤 Create New Judge</h2>
+
+    <div class="form-group">
+      <label>Judge Name</label>
+      <input type="text" id="judge-name" placeholder="e.g. John Doe">
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="judge-username" placeholder="e.g. judge7">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="judge-password" placeholder="Enter password">
+    </div>
+    <div class="form-group">
+      <label>Retype Password</label>
+      <input type="password" id="judge-password-confirm" placeholder="Retype password">
+      <div class="error-msg" id="judge-error" style="display:none"></div>
+    </div>
+
+    <button class="btn-primary" id="btn-create-judge" onclick="prepareJudgeConfirmation()">Create Judge</button>
+  </div>
+
+  <!-- Judge Confirmation Modal -->
+<div id="judge-confirm-overlay" class="lb-overlay">
+  <div class="lb-modal" style="max-width: 400px;">
+    <div class="lb-modal-header">
+      <div class="lb-modal-title">Confirm Judge Details</div>
+      <button onclick="closeJudgeConfirm()" class="lb-close">×</button>
+    </div>
+    <div class="lb-modal-body">
+      <div style="display:flex; flex-direction:column; gap:10px; font-size:14px; color:var(--text);">
+        <div><strong>Name:</strong> <span id="confirm-judge-name"></span></div>
+        <div><strong>Username:</strong> <span id="confirm-judge-username"></span></div>
+        <div><strong>Password:</strong> <span id="confirm-judge-password"></span></div>
+      </div>
+      <div class="error-msg" id="judge-confirm-error" style="display:none; margin-top:1rem;"></div>
+      <div style="display:flex; gap:10px; margin-top:1.5rem;">
+        <button class="btn-primary" id="btn-confirm-judge" onclick="submitJudge()">Confirm & Create</button>
+        <button class="btn-clear" onclick="closeJudgeConfirm()" style="flex:1;">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Create Contestant Card -->
+  <div class="settings-card" id="create-contestant-card">
+    <h2>🎤 Create New Contestant</h2>
+
+    <div class="form-group">
+      <label>Contestant Name</label>
+      <input type="text" id="contestant-name" placeholder="e.g. Jane Smith">
+    </div>
+    <div class="form-group">
+      <label>Age Group</label>
+      <div class="select-wrap">
+        <select id="contestant-age-group">
+          <option value="">— Choose age group —</option>
+          <option value="Junior">Junior</option>
+          <option value="Youth">Youth</option>
+          <option value="Adult">Adult</option>
+        </select>
+      </div>
+      <div class="error-msg" id="contestant-error" style="display:none"></div>
+    </div>
+
+    <button class="btn-primary" id="btn-create-contestant" onclick="prepareContestantConfirmation()">Create Contestant</button>
+  </div>
+
+  <!-- Contestant Confirmation Modal -->
+<div id="contestant-confirm-overlay" class="lb-overlay">
+  <div class="lb-modal" style="max-width: 400px;">
+    <div class="lb-modal-header">
+      <div class="lb-modal-title">Confirm Contestant Details</div>
+      <button onclick="closeContestantConfirm()" class="lb-close">×</button>
+    </div>
+    <div class="lb-modal-body">
+      <div style="display:flex; flex-direction:column; gap:10px; font-size:14px; color:var(--text);">
+        <div><strong>Name:</strong> <span id="confirm-contestant-name"></span></div>
+        <div><strong>Age Group:</strong> <span id="confirm-contestant-age-group"></span></div>
+      </div>
+      <div class="error-msg" id="contestant-confirm-error" style="display:none; margin-top:1rem;"></div>
+      <div style="display:flex; gap:10px; margin-top:1.5rem;">
+        <button class="btn-primary" id="btn-confirm-contestant" onclick="submitContestant()">Confirm & Create</button>
+        <button class="btn-clear" onclick="closeContestantConfirm()" style="flex:1;">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Judges List Modal -->
+<div id="judges-list-overlay" class="lb-overlay">
+  <div class="lb-modal" style="max-width: 560px;">
+    <div class="lb-modal-header">
+      <div class="lb-modal-title">👤 All Judges</div>
+      <button onclick="closeJudgesList()" class="lb-close">×</button>
+    </div>
+    <div class="lb-modal-body">
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="background:var(--surface-3);">
+            <th style="padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-muted);">Name</th>
+            <th style="padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-muted);">Username</th>
+            <th style="padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-muted);">Password</th>
+          </tr>
+        </thead>
+        <tbody id="judges-list-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- Contestants List Modal -->
+<div id="contestants-list-overlay" class="lb-overlay">
+  <div class="lb-modal" style="max-width: 480px;">
+    <div class="lb-modal-header">
+      <div class="lb-modal-title">🎤 All Contestants</div>
+      <button onclick="closeContestantsList()" class="lb-close">×</button>
+    </div>
+    <div class="lb-modal-body">
+      <table style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr style="background:var(--surface-3);">
+            <th style="padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-muted);">#</th>
+            <th style="padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-muted);">Name</th>
+            <th style="padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-muted);">Age Group</th>
+          </tr>
+        </thead>
+        <tbody id="contestants-list-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+
+
+<script>
+  if (!sessionStorage.getItem('isAdmin')) {
+    window.location.href = 'index.html';
+  }
+
+  const adminUsername = sessionStorage.getItem('adminUsername');
+  const adminPassword = sessionStorage.getItem('adminPassword');
+
+
+  //Judge Creation --------------------------------------------------------------------------------------------------------------
+  function prepareJudgeConfirmation() {
+    const name = document.getElementById('judge-name').value.trim();
+    const username = document.getElementById('judge-username').value.trim();
+    const password = document.getElementById('judge-password').value;
+    const confirmPassword = document.getElementById('judge-password-confirm').value;
+    const err = document.getElementById('judge-error');
+    err.style.display = 'none';
+
+    if (!name || !username || !password || !confirmPassword) {
+      err.textContent = 'Please fill in all fields.';
+      err.style.display = 'block';
+      return;
+    }
+    if (password !== confirmPassword) {
+      err.textContent = 'Passwords do not match.';
+      err.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('confirm-judge-name').textContent = name;
+    document.getElementById('confirm-judge-username').textContent = username;
+    document.getElementById('confirm-judge-password').textContent = password;
+    document.getElementById('judge-confirm-overlay').classList.add('open');
+  }
+
+  function closeJudgeConfirm() {
+    document.getElementById('judge-confirm-overlay').classList.remove('open');
+  }
+
+  async function submitJudge() {
+    const name = document.getElementById('judge-name').value.trim();
+    const username = document.getElementById('judge-username').value.trim();
+    const password = document.getElementById('judge-password').value;
+    const btn = document.getElementById('btn-confirm-judge');
+    const err = document.getElementById('judge-confirm-error');
+    err.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+
+    try {
+      const res = await fetch('/api/admin/create-judge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminUsername, adminPassword, username, password, name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      closeJudgeConfirm();
+      alert(`Judge "${name}" created successfully!`);
+
+      // Clear form
+      document.getElementById('judge-name').value = '';
+      document.getElementById('judge-username').value = '';
+      document.getElementById('judge-password').value = '';
+      document.getElementById('judge-password-confirm').value = '';
+
+    } catch (e) {
+      err.textContent = e.message || 'Failed to create judge.';
+      err.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Confirm & Create';
+    }
+  }
+
+
+  //Contestant Creation --------------------------------------------------------------------------------------------------------------
+  function prepareContestantConfirmation() {
+    const name = document.getElementById('contestant-name').value.trim();
+    const ageGroup = document.getElementById('contestant-age-group').value;
+    const err = document.getElementById('contestant-error');
+    err.style.display = 'none';
+
+    if (!name) {
+      err.textContent = 'Please enter a contestant name.';
+      err.style.display = 'block';
+      return;
+    }
+    if (!ageGroup) {
+      err.textContent = 'Please select an age group.';
+      err.style.display = 'block';
+      return;
+    }
+
+    document.getElementById('confirm-contestant-name').textContent = name;
+    document.getElementById('confirm-contestant-age-group').textContent = ageGroup;
+    document.getElementById('contestant-confirm-overlay').classList.add('open');
+  }
+
+  function closeContestantConfirm() {
+    document.getElementById('contestant-confirm-overlay').classList.remove('open');
+  }
+
+  async function submitContestant() {
+    const name = document.getElementById('contestant-name').value.trim();
+    const ageGroup = document.getElementById('contestant-age-group').value;
+    const btn = document.getElementById('btn-confirm-contestant');
+    const err = document.getElementById('contestant-confirm-error');
+    err.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+
+    try {
+      const res = await fetch('/api/admin/create-contestant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminUsername, adminPassword, name, ageGroup }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      closeContestantConfirm();
+      alert(`Contestant "${name}" (#${data.contestantNumber}) created successfully in ${ageGroup} category!`);
+
+      //Clear the form.
+      document.getElementById('contestant-name').value = '';
+      document.getElementById('contestant-age-group').value = '';
+
+    } catch (e) {
+      err.textContent = e.message || 'Failed to create contestant.';
+      err.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Confirm & Create';
+    }
+  }
+
+
+  //View all Judges and info --------------------------------------------------------------------------------------------------------------
+  async function showJudgesList() {
+    try {
+      const res = await fetch('/api/admin/judges-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminUsername, adminPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      const body = document.getElementById('judges-list-body');
+      body.innerHTML = data.judges.map(j => `
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px; font-size:13px;">${j.name}</td>
+          <td style="padding:8px 10px; font-size:13px;">${j.username}</td>
+          <td style="padding:8px 10px; font-size:13px; font-family:monospace;">${j.password}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('judges-list-overlay').classList.add('open');
+    } catch (e) {
+      alert('Failed to load judges: ' + e.message);
+    }
+  }
+
+  function closeJudgesList() {
+    document.getElementById('judges-list-overlay').classList.remove('open');
+  }
+
+  //View all Contestants and Info --------------------------------------------------------------------------------------------------------------
+  async function showContestantsList() {
+    try {
+      const res = await fetch('/api/config');
+      const data = await res.json();
+
+      const body = document.getElementById('contestants-list-body');
+      const ageColors = { 'Junior': '#4A9ECC', 'Youth': '#9B59B6', 'Adult': '#E67E22' };
+
+      body.innerHTML = data.contestants.map(c => `
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px; font-size:13px;">${c.contestant_number}</td>
+          <td style="padding:8px 10px; font-size:13px;">${c.name}</td>
+          <td style="padding:8px 10px; font-size:13px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="width:12px; height:12px; border-radius:50%; background:${ageColors[c.age_group] || '#999'};"></div>
+              ${c.age_group}
+            </div>
+          </td>
+        </tr>
+      `).join('');
+
+      document.getElementById('contestants-list-overlay').classList.add('open');
+    } catch (e) {
+      alert('Failed to load contestants: ' + e.message);
+    }
+  }
+
+  function closeContestantsList() {
+    document.getElementById('contestants-list-overlay').classList.remove('open');
+  }
+
+</script>
+
+</body>
+</html>
+
+
+
