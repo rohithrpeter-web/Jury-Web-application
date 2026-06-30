@@ -26,7 +26,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS contestants (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     contestant_number INTEGER UNIQUE NOT NULL,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    age_group TEXT NOT NULL DEFAULT 'Junior' CHECK(age_group IN ('Junior', 'Youth', 'Adult'))
   );
 
   CREATE TABLE IF NOT EXISTS categories (
@@ -99,7 +100,7 @@ app.post('/api/admin/login', (req, res) => {
 app.get('/api/config', (req, res) => {
   try {
     const categories  = db.prepare(`SELECT id, name, desc FROM categories`).all();
-    const contestants = db.prepare(`SELECT id, contestant_number, name FROM contestants ORDER BY contestant_number`).all();
+    const contestants = db.prepare(`SELECT id, contestant_number, name, age_group FROM contestants ORDER BY contestant_number`).all();
     res.json({ categories, contestants, editWindowMs: EDIT_WINDOW_MS });
   } 
   catch (e) {
@@ -173,10 +174,9 @@ app.post('/api/results', (req, res) => {
 
   try {
     const judges      = db.prepare(`SELECT id, name FROM judges WHERE is_admin = 0`).all();
-    const contestants = db.prepare(`SELECT id, contestant_number, name FROM contestants ORDER BY contestant_number`).all();
+    const contestants = db.prepare(`SELECT id, contestant_number, name, age_group FROM contestants ORDER BY contestant_number`).all();
     const categories  = db.prepare(`SELECT id, name FROM categories`).all();
     const rows        = db.prepare(`SELECT judge_id, contestant_id, category_id, score FROM scores`).all();
-
     const scoresMap = {};
 
     rows.forEach(r => {

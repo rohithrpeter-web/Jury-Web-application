@@ -15,6 +15,7 @@
   </a>
   <div class="topbar-right">
     <span class="judge-badge" id="judge-label">—</span>
+    <button class="btn-leaderboard" id="btn-age-colors" onclick="showAgeColors()">Age Categories Color</button>
     <button class="btn-leaderboard" id="btn-leaderboard" onclick="showLeaderboard()">🏆 My Leaderboard</button>
     <button class="btn-logout" id="btn-logout">Sign out</button>
   </div>
@@ -63,6 +64,33 @@
   </div>
 </div>
 
+
+<!-- Age Categories Color Pad -->
+<div id="age-colors-overlay" class="lb-overlay">
+  <div class="lb-modal" style="max-width: 320px;">
+    <div class="lb-modal-header">
+      <div class="lb-modal-title">Age Categories</div>
+      <button onclick="closeAgeColors()" class="lb-close">×</button>
+    </div>
+    <div class="lb-modal-body">
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:20px; height:20px; border-radius:50%; background:#4A9ECC;"></div>
+          <span style="font-size:15px; color:var(--navy); font-weight:600;">Junior</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:20px; height:20px; border-radius:50%; background:#9B59B6;"></div>
+          <span style="font-size:15px; color:var(--navy); font-weight:600;">Youth</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="width:20px; height:20px; border-radius:50%; background:#E67E22;"></div>
+          <span style="font-size:15px; color:var(--navy); font-weight:600;">Adult</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script src="app.js"></script>
@@ -103,7 +131,8 @@
       candidates = config.contestants.map(c => ({
         id: c.id,
         num: c.contestant_number,
-        name: c.name
+        name: c.name,
+        ageGroup: c.age_group
       }));
 
       renderSidebar();
@@ -134,11 +163,13 @@
       const isActive = selected?.id === cand.id;
 
       const el = document.createElement('div');
+      const ageColor = cand.ageGroup === 'Junior' ? '#4A9ECC' : cand.ageGroup === 'Youth' ? '#9B59B6' : '#E67E22';
+
       el.className = `candidate-item${isActive ? ' active' : ''}${locked ? ' locked' : scored ? ' scored' : ''}`;
       el.innerHTML = `
         <div class="cand-avatar">${String(cand.num).padStart(2,'0')}</div>
         <div class="cand-info">
-          <div class="cand-name">${cand.name}</div>
+          <div class="cand-name" style="color: ${ageColor}">${cand.name}</div>
           <div class="cand-num">#${cand.num}</div>
         </div>
         <div><div class="status-dot ${locked ? 'locked' : scored ? 'scored' : ''}"></div></div>
@@ -187,7 +218,7 @@
     const area   = document.getElementById('scoring-area');
 
     const total = Object.values(draftScores).reduce((a, b) => a + b, 0);
-    const avg   = (total / config.categories.length).toFixed(1);
+    const avg   = (total / config.categories.length).toFixed(3);
 
     area.innerHTML = `
       <div class="scoring-header">
@@ -290,7 +321,7 @@
 
   function updateTotalsDisplay() {
     const total = Object.values(draftScores).reduce((a, b) => a + b, 0);
-    const avg   = (total / config.categories.length).toFixed(1);
+    const avg   = (total / config.categories.length).toFixed(3);
     const tv = document.getElementById('total-val');
     const av = document.getElementById('avg-val');
     if (tv) tv.innerHTML = `${total}<span> / ${config.categories.length * 10}</span>`;
@@ -386,81 +417,127 @@ function showLeaderboard() {
     document.getElementById('leaderboard-overlay').classList.remove('open');
   }
 
+  
   document.getElementById('leaderboard-overlay').addEventListener('click', function(e) {
     if (e.target === this) closeLeaderboard();
   });
 
+  //Age Color Pad sections --------------------------------------------------------------------------------------------------------------------------------
+  function showAgeColors() {
+    document.getElementById('age-colors-overlay').classList.add('open');
+  }
+
+  function closeAgeColors() {
+    document.getElementById('age-colors-overlay').classList.remove('open');
+  }
+
+  document.getElementById('age-colors-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeAgeColors();
+  });
+
+
 function renderLeaderboard() {
     const body = document.getElementById('leaderboard-body');
-    console.log('candidates:', candidates);
-    console.log('myScores:', myScores);
 
-    const scored = candidates
-      .filter(c => !!(myScores[c.id] || myScores[String(c.id)]))
-      .map(c => {
-        const entry = myScores[c.id] || myScores[String(c.id)];
-        const scores = Object.values(entry.scores);
-        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-        return { ...c, avg: Math.round(avg * 100) / 100 };
-      })
-      .sort((a, b) => b.avg - a.avg);
-
-    const unscored = candidates.filter(c => !(myScores[c.id] || myScores[String(c.id)]));
-
-    const groups = [];
-    let rank = 1;
-    let i = 0;
-    while (i < scored.length) {
-      const avg = scored[i].avg;
-      const group = [];
-      while (i < scored.length && scored[i].avg === avg) {
-        group.push(scored[i]);
-        i++;
-      }
-      groups.push({ rank, avg, members: group });
-      rank += group.length;
-    }
+    const ageGroups = ['Junior', 'Youth', 'Adult'];
+    const ageColors = {
+      'Junior': { header: '#4A9ECC'},
+      'Youth':  { header: '#9B59B6'},
+      'Adult':  { header: '#E67E22'},
+    };
 
     let html = '';
 
-    if (groups.length === 0) {
-      html = `<div style="text-align:center; color:var(--text-muted); padding:2rem; font-size:14px;">No scores submitted yet.</div>`;
-    } else {
-      groups.forEach(group => {
-        const rankClass = group.rank === 1 ? 'gold' : group.rank === 2 ? 'silver' : group.rank === 3 ? 'bronze' : 'other';
-        const rankEmoji = group.rank === 1 ? '🥇' : group.rank === 2 ? '🥈' : group.rank === 3 ? '🥉' : `#${group.rank}`;
-        const tiedLabel = group.members.length > 1 ? ` &nbsp;·&nbsp; <span style="font-weight:400">Tied</span>` : '';
+    ageGroups.forEach(group => {
+      const groupCandidates = candidates.filter(c => c.ageGroup === group);
 
-        html += `
-          <div class="lb-rank-group">
-            <div class="lb-rank-header ${rankClass}">
-              ${rankEmoji} &nbsp; Place ${group.rank}${tiedLabel} &nbsp;·&nbsp; avg <strong>${group.avg.toFixed(2)}</strong> / 10
-            </div>
-            ${group.members.map(c => `
-              <div class="lb-contestant">
-                <div>
-                  <div class="lb-name">${c.name}</div>
-                  <div class="lb-num">#${c.num}</div>
-                </div>
-                <div class="lb-avg">${group.avg.toFixed(2)}</div>
+      const scored = groupCandidates
+        .filter(c => !!(myScores[c.id] || myScores[String(c.id)]))
+        .map(c => {
+          const entry = myScores[c.id] || myScores[String(c.id)];
+          const scores = Object.values(entry.scores);
+          const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+          return { ...c, avg: Math.round(avg * 100) / 100 };
+        })
+        .sort((a, b) => b.avg - a.avg);
+
+      const unscored = groupCandidates.filter(c => !(myScores[c.id] || myScores[String(c.id)]));
+
+      // Group by tied avg
+      const groups = [];
+      let rank = 1;
+      let i = 0;
+      while (i < scored.length) {
+        const avg = scored[i].avg;
+        const tieGroup = [];
+        while (i < scored.length && scored[i].avg === avg) {
+          tieGroup.push(scored[i]);
+          i++;
+        }
+        groups.push({ rank, avg, members: tieGroup });
+        rank++;
+      }
+
+      const color = ageColors[group];
+
+      html += `
+        <div style="margin-bottom: 6rem;">
+          <div style="
+            background: ${color.header};
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 8px 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+          ">${group}</div>
+      `;
+
+      if (groups.length === 0 && unscored.length === 0) {
+        html += `<div style="font-size:13px; color:var(--text-muted); padding: 8px 4px;">No contestants in this group.</div>`;
+      } else if (groups.length === 0) {
+        html += `<div style="font-size:13px; color:var(--text-muted); padding: 8px 4px;">No scores submitted yet.</div>`;
+      } else {
+        groups.forEach(group => {
+          const rankClass = group.rank === 1 ? 'gold' : group.rank === 2 ? 'silver' : group.rank === 3 ? 'bronze' : 'other';
+          const rankEmoji = group.rank === 1 ? '🥇' : group.rank === 2 ? '🥈' : group.rank === 3 ? '🥉' : `#${group.rank}`;
+          const tiedLabel = group.members.length > 1 ? ` &nbsp;·&nbsp; <span style="font-weight:400">Tied</span>` : '';
+
+          html += `
+            <div class="lb-rank-group">
+              <div class="lb-rank-header ${rankClass}">
+                ${rankEmoji} &nbsp; Place ${group.rank}${tiedLabel} &nbsp;·&nbsp; avg <strong>${group.avg.toFixed(2)}</strong> / 10
               </div>
-            `).join('')}
-          </div>
-        `;
-      });
-    }
+              ${group.members.map(c => `
+                <div class="lb-contestant">
+                  <div>
+                    <div class="lb-name">${c.name}</div>
+                    <div class="lb-num">#${c.num}</div>
+                  </div>
+                  <div class="lb-avg">${group.avg.toFixed(2)}</div>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        });
+      }
 
-    if (unscored.length > 0) {
-      html += `<div class="lb-unscored-header">Not yet scored (${unscored.length})</div>`;
-      unscored.forEach(c => {
-        html += `
-          <div class="lb-unscored-item">
-            <span>${c.name} <span style="font-size:11px">#${c.num}</span></span>
-            <span style="font-size:12px">—</span>
-          </div>
-        `;
-      });
-    }
+      if (unscored.length > 0) {
+        html += `<div class="lb-unscored-header">Not yet scored (${unscored.length})</div>`;
+        unscored.forEach(c => {
+          html += `
+            <div class="lb-unscored-item">
+              <span>${c.name} <span style="font-size:11px">#${c.num}</span></span>
+              <span style="font-size:12px">—</span>
+            </div>
+          `;
+        });
+      }
+
+      html += `</div>`;
+    });
 
     body.innerHTML = html;
   }

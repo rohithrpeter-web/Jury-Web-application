@@ -191,140 +191,177 @@
     }
   }
 
+
   //Render ------------------------------------------------------------------------------------------------
   function render({ judges, contestants, categories, scoresMap }) {
     const content = document.getElementById('admin-content');
 
-    //Compute the total score per contestant.
-    const ranked = contestants.map(c => {
-      const judgeEntries = judges.map(j => {
+    const totalGraded = contestants.filter(c => scoresMap[c.id] && Object.keys(scoresMap[c.id]).length > 0).length;
 
-        const catScores = scoresMap[c.id]?.[j.id];
-        if (!catScores) return { judge: j, graded: false, catScores: null, total: 0, avg: null };
-        const vals = Object.values(catScores);
-        const total = vals.reduce((a, b) => a + b, 0);
-        const avg = total / categories.length;
-
-        return { judge: j, graded: true, catScores, total, avg };
-      });
-
-      const gradedEntries = judgeEntries.filter(e => e.graded);
-      const grandTotal = gradedEntries.reduce((a, e) => a + e.total, 0);
-      const gradedCount = gradedEntries.length;
-
-      return { contestant: c, judgeEntries, grandTotal, gradedCount };
-    }).sort((a, b) => {
-
-      //Order from greatest to lowest...
-      if (a.gradedCount === 0 && b.gradedCount === 0) return a.contestant.contestant_number - b.contestant.contestant_number;
-      if (a.gradedCount === 0) return 1;
-      if (b.gradedCount === 0) return -1;
-      return b.grandTotal - a.grandTotal;
-    });
-
-    
-    //Assigning the ranks (The ties share the same rank logic)......
-    let i = 0;
-    let rankPos = 1;
-
-    while (i < ranked.length) {
-      if (ranked[i].gradedCount === 0) { ranked[i].rank = null; i++; continue; }
-
-      //Check the no. of contestants sharing the same score.
-      let j = i;
-      while (j < ranked.length && ranked[j].gradedCount > 0 && ranked[j].grandTotal === ranked[i].grandTotal) {
-        j++;
-      }
-      const groupSize = j - i;
-
-      //Assign same rank to all in the same rank group.
-      for (let k = i; k < j; k++) {
-        ranked[k].rank = rankPos;
-        if (groupSize > 1) ranked[k].tied = true;
-      }
-      rankPos++;
-      i = j;
-    }
-
-    const totalGraded = ranked.filter(r => r.gradedCount > 0).length;
-
-    //Stats ---------------------------------------------------------------------------------------------------------------------
+    // Stats
     let html = `
       <div class="stats-row">
         <div class="stat-card"><div class="stat-label">Contestants</div><div class="stat-val">${contestants.length}</div></div>
         <div class="stat-card"><div class="stat-label">Judges</div><div class="stat-val">${judges.length}</div></div>
         <div class="stat-card"><div class="stat-label">Categories</div><div class="stat-val">${categories.length}</div></div>
         <div class="stat-card"><div class="stat-label">Contestants Graded</div><div class="stat-val">${totalGraded}</div></div>
+        <div class="stat-card" style="background:#F0F1F3; border:1px solid var(--border);">
+          <div class="stat-label">Age Categories</div>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="width:16px; height:16px; border-radius:50%; background:#4A9ECC;"></div>
+              <span style="font-size:13px; color:var(--navy); font-weight:600;">Junior</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="width:16px; height:16px; border-radius:50%; background:#9B59B6;"></div>
+              <span style="font-size:13px; color:var(--navy); font-weight:600;">Youth</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="width:16px; height:16px; border-radius:50%; background:#E67E22;"></div>
+              <span style="font-size:13px; color:var(--navy); font-weight:600;">Adult</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="admin-title">Contestant Rankings</div>
     `;
 
-    //Contestant cards -------------------------------------------------------------------------------------------------------------
-    ranked.forEach((r, idx) => {
+    // Render each age group as its own section
+    const ageGroups = [
+      { key: 'Junior', color: '#4A9ECC' },
+      { key: 'Youth', color: '#9B59B6' },
+      { key: 'Adult', color: '#E67E22' },
+    ];
 
-      const c = r.contestant;
-      const rankClass = r.rank === 1 ? 'gold' : r.rank === 2 ? 'silver' : r.rank === 3 ? 'bronze' : '';
-      const rankLabel = r.rank ? (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`) : '—';
-      const tiedBadge = r.tied ? `<span class="tied-banner">Tied</span>` : '';
-      const scoreDisplay = r.gradedCount > 0 ? `${r.grandTotal} pts` : '—';
+    ageGroups.forEach(ag => {
 
-      //Category header columns................................
-      const catHeaders = categories.map(cat =>
-        `<th class="right">${cat.name}</th>`).join('');
+      // Filter contestants for this age group
+      const groupContestants = contestants.filter(c => c.age_group === ag.key);
 
-      //Judge's rows............................................
-      const judgeRows = r.judgeEntries.map(e => {
-        if (!e.graded) {
+      // Compute scores for each contestant in this group
+      const ranked = groupContestants.map(c => {
+        const judgeEntries = judges.map(j => {
+          const catScores = scoresMap[c.id]?.[j.id];
+          if (!catScores) return { judge: j, graded: false, catScores: null, total: 0, avg: null };
+          const vals = Object.values(catScores);
+          const total = vals.reduce((a, b) => a + b, 0);
+          const avg = total / categories.length;
+          return { judge: j, graded: true, catScores, total, avg };
+        });
+
+        const gradedEntries = judgeEntries.filter(e => e.graded);
+        const grandTotal = gradedEntries.reduce((a, e) => a + e.total, 0);
+        const gradedCount = gradedEntries.length;
+
+        return { contestant: c, judgeEntries, grandTotal, gradedCount };
+      }).sort((a, b) => {
+        if (a.gradedCount === 0 && b.gradedCount === 0) return a.contestant.contestant_number - b.contestant.contestant_number;
+        if (a.gradedCount === 0) return 1;
+        if (b.gradedCount === 0) return -1;
+        return b.grandTotal - a.grandTotal;
+      });
+
+      // Assign ranks within this group
+      let i = 0;
+      let rankPos = 1;
+      while (i < ranked.length) {
+        if (ranked[i].gradedCount === 0) { ranked[i].rank = null; i++; continue; }
+        let j = i;
+        while (j < ranked.length && ranked[j].gradedCount > 0 && ranked[j].grandTotal === ranked[i].grandTotal) {
+          j++;
+        }
+        const groupSize = j - i;
+        for (let k = i; k < j; k++) {
+          ranked[k].rank = rankPos;
+          if (groupSize > 1) ranked[k].tied = true;
+        }
+        rankPos++;
+        i = j;
+      }
+
+      // Age group section header
+      html += `
+        <div style="
+          background: ${ag.color};
+          color: #fff;
+          font-size: 16px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          padding: 12px 20px;
+          border-radius: 10px;
+          margin-bottom: 1rem;
+          margin-top: 6rem;
+        ">${ag.key} Category</div>
+      `;
+
+      if (groupContestants.length === 0) {
+        html += `<div style="color:var(--text-muted); font-size:14px; margin-bottom:1rem;">No contestants in this category.</div>`;
+        return;
+      }
+
+      // Contestant cards for this group
+      ranked.forEach(r => {
+        const c = r.contestant;
+        const rankClass = r.rank === 1 ? 'gold' : r.rank === 2 ? 'silver' : r.rank === 3 ? 'bronze' : '';
+        const rankLabel = r.rank ? (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`) : '—';
+        const tiedBadge = r.tied ? `<span class="tied-banner">Tied</span>` : '';
+        const scoreDisplay = r.gradedCount > 0 ? `${r.grandTotal} pts` : '—';
+
+        const catHeaders = categories.map(cat => `<th class="right">${cat.name}</th>`).join('');
+
+        const judgeRows = r.judgeEntries.map(e => {
+          if (!e.graded) {
+            return `
+              <tr>
+                <td>${e.judge.name}</td>
+                <td colspan="${categories.length + 2}" class="not-graded">Not graded yet</td>
+              </tr>`;
+          }
+          const catCells = categories.map(cat =>
+            `<td class="right cat-score">${e.catScores[cat.id] ?? '—'}</td>`).join('');
           return `
             <tr>
               <td>${e.judge.name}</td>
-              <td colspan="${categories.length + 2}" class="not-graded">Not graded yet</td>
+              ${catCells}
+              <td class="right">${e.total}</td>
+              <td class="right judge-avg">${e.avg.toFixed(3)}</td>
             </tr>`;
-        }
-        const catCells = categories.map(cat =>
-          `<td class="right cat-score">${e.catScores[cat.id] ?? '—'}</td>`).join('');
-        return `
-          <tr>
-            <td>${e.judge.name}</td>
-            ${catCells}
-            <td class="right">${e.total}</td>
-            <td class="right judge-avg">${e.avg.toFixed(2)}</td>
-          </tr>`;
-      }).join('');
+        }).join('');
 
-      html += `
-        <div class="contestant-card" id="card_${c.id}">
-          <div class="contestant-card-header" onclick="toggleCard('card_${c.id}')">
-            <div class="contestant-header-left">
-              <div class="contestant-rank ${rankClass}">${rankLabel}</div>
-              <div>
-                <div class="contestant-card-name">${c.name} ${tiedBadge}</div>
-                <div class="contestant-card-num">#${c.contestant_number}</div>
+        html += `
+          <div class="contestant-card" id="card_${c.id}">
+            <div class="contestant-card-header" onclick="toggleCard('card_${c.id}')">
+              <div class="contestant-header-left">
+                <div class="contestant-rank ${rankClass}">${rankLabel}</div>
+                <div>
+                  <div class="contestant-card-name">${c.name} ${tiedBadge}</div>
+                  <div class="contestant-card-num">#${c.contestant_number}</div>
+                </div>
+              </div>
+              <div class="contestant-header-right">
+                <div class="total-score-badge">${scoreDisplay}</div>
+                <div class="judges-done">${r.gradedCount} / ${judges.length} judges</div>
+                <div class="expand-arrow">▼</div>
               </div>
             </div>
-            <div class="contestant-header-right">
-              <div class="total-score-badge">${scoreDisplay}</div>
-              <div class="judges-done">${r.gradedCount} / ${judges.length} judges</div>
-              <div class="expand-arrow">▼</div>
+            <div class="collapse-body">
+              <table class="judge-table">
+                <thead>
+                  <tr>
+                    <th>Judge</th>
+                    ${catHeaders}
+                    <th class="right">Total</th>
+                    <th class="right">Avg</th>
+                  </tr>
+                </thead>
+                <tbody>${judgeRows}</tbody>
+              </table>
             </div>
           </div>
-          <div class="collapse-body">
-            <table class="judge-table">
-              <thead>
-                <tr>
-                  <th>Judge</th>
-                  ${catHeaders}
-                  <th class="right">Total</th>
-                  <th class="right">Avg</th>
-                </tr>
-              </thead>
-              <tbody>${judgeRows}</tbody>
-            </table>
-          </div>
-        </div>
-      `;
+        `;
+      });
     });
-    console.log(ranked.map(r => ({ name: r.contestant.name, rank: r.rank, total: r.grandTotal })));
+
     content.innerHTML = html;
   }
 
@@ -335,7 +372,7 @@
   loadResults();
 
   //Ten seconds refresh for updated results........................
-  setInterval(loadResults, 10000);
+  setInterval(loadResults, 15000);
 </script>
 </body>
 </html>
