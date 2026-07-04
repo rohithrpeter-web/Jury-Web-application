@@ -279,6 +279,15 @@ app.post('/api/results', (req, res) => {
 });
 
 
+
+//Temporary download setup................................
+app.get('/api/admin/download-db', (req, res) => {
+  const adminPass = req.query.key;
+  if (adminPass !== 'Thevontgf2026') return res.status(401).send('Unauthorized');
+  res.download(path.join(__dirname, 'judges.db'));
+});
+
+
 //Initiating the server ---------------------------------------------------------------------------------------------------------------------------------------
 app.listen(PORT, () => {
   console.log(`\n Judges system running at http://localhost:${PORT}`);
