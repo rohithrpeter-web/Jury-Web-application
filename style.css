@@ -1,4 +1,4 @@
-/* style.css - Judges Scoring System */
+/* ================================= style.css for the Judges Scoring System ================================================= */
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -303,7 +303,7 @@ body {
 .locked-notice svg { flex-shrink: 0; width: 18px; height: 18px; }
 
 
-/* ------------------------------------------------- Admin Page ------------------------------------------------- */
+/* ----------------------------------------------------- Admin Page ----------------------------------------------------- */
 .admin-page {
   flex: 1; background: var(--surface-2); overflow-y: auto; padding: 2rem;
 }
@@ -382,7 +382,7 @@ tbody td.right { text-align: right; }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast.error { border-left-color: var(--danger); }
 
-/* ── RESPONSIVE ── */
+/* --------------------------------------------------- RESPONSIVE ------------------------------------------------------- */
 @media (max-width: 680px) {
   .app-layout { flex-direction: column; height: auto; }
   .sidebar { width: 100%; height: auto; max-height: 220px; }

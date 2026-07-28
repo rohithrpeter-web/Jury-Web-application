@@ -259,9 +259,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminUsername, adminPassword, username, password, name }),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
       closeJudgeConfirm();
       alert(`Judge "${name}" created successfully!`);
 
@@ -271,10 +271,12 @@
       document.getElementById('judge-password').value = '';
       document.getElementById('judge-password-confirm').value = '';
 
-    } catch (e) {
+    } 
+    catch (e) {
       err.textContent = e.message || 'Failed to create judge.';
       err.style.display = 'block';
-    } finally {
+    } 
+    finally {
       btn.disabled = false;
       btn.textContent = 'Confirm & Create';
     }
@@ -323,9 +325,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminUsername, adminPassword, name, ageGroup }),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
       closeContestantConfirm();
       alert(`Contestant "${name}" (#${data.contestantNumber}) created successfully in ${ageGroup} category!`);
 
@@ -333,10 +335,12 @@
       document.getElementById('contestant-name').value = '';
       document.getElementById('contestant-age-group').value = '';
 
-    } catch (e) {
+    } 
+    catch (e) {
       err.textContent = e.message || 'Failed to create contestant.';
       err.style.display = 'block';
-    } finally {
+    } 
+    finally {
       btn.disabled = false;
       btn.textContent = 'Confirm & Create';
     }
@@ -351,10 +355,11 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminUsername, adminPassword }),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-
       const body = document.getElementById('judges-list-body');
+
       body.innerHTML = data.judges.map(j => `
         <tr style="border-bottom:1px solid var(--border);">
           <td style="padding:8px 10px; font-size:13px;">${j.name}</td>
@@ -364,7 +369,8 @@
       `).join('');
 
       document.getElementById('judges-list-overlay').classList.add('open');
-    } catch (e) {
+    } 
+    catch (e) {
       alert('Failed to load judges: ' + e.message);
     }
   }
@@ -378,7 +384,6 @@
     try {
       const res = await fetch('/api/config');
       const data = await res.json();
-
       const body = document.getElementById('contestants-list-body');
       const ageColors = { 'Junior': '#4A9ECC', 'Youth': '#9B59B6', 'Adult': '#E67E22' };
 
@@ -396,7 +401,8 @@
       `).join('');
 
       document.getElementById('contestants-list-overlay').classList.add('open');
-    } catch (e) {
+    } 
+    catch (e) {
       alert('Failed to load contestants: ' + e.message);
     }
   }

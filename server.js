@@ -51,10 +51,10 @@ db.exec(`
 
 
 const seedCategories = [
-  ['swara',     'Swara',     'Pitch accuracy and note clarity'],
-  ['taal',      'Taal',      'Rhythm and timing precision'],
-  ['bhava',     'Bhava',     'Expression and emotional delivery'],
-  ['complex',   'Complex',   'Technical difficulty and execution'],
+  ['swara', 'Swara', 'Pitch accuracy and note clarity'],
+  ['taal', 'Taal', 'Rhythm and timing precision'],
+  ['bhava', 'Bhava', 'Expression and emotional delivery'],
+  ['complex', 'Complex', 'Technical difficulty and execution'],
   ['pronounce', 'Pronounce', 'Pronunciation clarity and diction'],
   ['orchestra', 'Orchestra Compatibility', 'Coordinating with band and comfortable presentation'],
   ['overall', 'Overall Performance', 'Presentation, Stage presence, and adding X factor']
@@ -69,9 +69,7 @@ app.use(express.static(__dirname));
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   try {
-    const judge = db.prepare(
-      `SELECT id, name FROM judges WHERE username = ? AND password = ? AND is_admin = 0`
-    ).get(username, password);
+    const judge = db.prepare(`SELECT id, name FROM judges WHERE username = ? AND password = ? AND is_admin = 0`).get(username, password);
     if (!judge) return res.status(401).json({ error: 'Error: The entered Username or Password is incorrect! Please try again.' });
     res.json({ ok: true, judgeId: judge.id, judgeName: judge.name });
   } 
@@ -155,7 +153,6 @@ app.post('/api/admin/create-contestant', (req, res) => {
     //Getting the next contestant number...
     const maxNum = db.prepare(`SELECT MAX(contestant_number) as maxNum FROM contestants`).get();
     const nextNumber = (maxNum.maxNum || 0) + 1;
-
     const insert = db.prepare(`INSERT INTO contestants (contestant_number, name, age_group) VALUES (?, ?, ?)`);
     const result = insert.run(nextNumber, name, ageGroup);
 
@@ -259,10 +256,10 @@ app.post('/api/scores/submit', (req, res) => {
 app.post('/api/results', (req, res) => {
 
   try {
-    const judges      = db.prepare(`SELECT id, name FROM judges WHERE is_admin = 0`).all();
+    const judges = db.prepare(`SELECT id, name FROM judges WHERE is_admin = 0`).all();
     const contestants = db.prepare(`SELECT id, contestant_number, name, age_group FROM contestants ORDER BY contestant_number`).all();
-    const categories  = db.prepare(`SELECT id, name FROM categories`).all();
-    const rows        = db.prepare(`SELECT judge_id, contestant_id, category_id, score FROM scores`).all();
+    const categories = db.prepare(`SELECT id, name FROM categories`).all();
+    const rows = db.prepare(`SELECT judge_id, contestant_id, category_id, score FROM scores`).all();
     const scoresMap = {};
 
     rows.forEach(r => {

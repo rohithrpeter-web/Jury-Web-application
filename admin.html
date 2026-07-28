@@ -184,9 +184,11 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
+
       const data = await res.json();
       render(data);
-    } catch (e) {
+    } 
+    catch (e) {
       document.getElementById('admin-content').innerHTML =
         `<div class="loading">Failed to load results. Is the server running?</div>`;
     }
@@ -195,11 +197,11 @@
 
   //Render ------------------------------------------------------------------------------------------------
   function render({ judges, contestants, categories, scoresMap }) {
-    const content = document.getElementById('admin-content');
 
+    const content = document.getElementById('admin-content');
     const totalGraded = contestants.filter(c => scoresMap[c.id] && Object.keys(scoresMap[c.id]).length > 0).length;
 
-    // Stats
+    //Stats.........................................................................
     let html = `
       <div class="stats-row">
         <div class="stat-card"><div class="stat-label">Contestants</div><div class="stat-val">${contestants.length}</div></div>
@@ -235,10 +237,10 @@
 
     ageGroups.forEach(ag => {
 
-      // Filter contestants for this age group
+      //Filter contestants for the age group.
       const groupContestants = contestants.filter(c => c.age_group === ag.key);
 
-      // Compute scores for each contestant in this group
+      //Compute scores for each contestant in this group.
       const ranked = groupContestants.map(c => {
         const judgeEntries = judges.map(j => {
           const catScores = scoresMap[c.id]?.[j.id];
@@ -261,7 +263,7 @@
         return b.grandTotal - a.grandTotal;
       });
 
-      // Assign ranks within this group
+      //Assign ranks within the groups.................
       let i = 0;
       let rankPos = 1;
       while (i < ranked.length) {
@@ -307,7 +309,6 @@
         const rankLabel = r.rank ? (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`) : '—';
         const tiedBadge = r.tied ? `<span class="tied-banner">Tied</span>` : '';
         const scoreDisplay = r.gradedCount > 0 ? `${r.grandTotal} pts` : '—';
-
         const catHeaders = categories.map(cat => `<th class="right">${cat.name}</th>`).join('');
 
         const judgeRows = r.judgeEntries.map(e => {
@@ -377,3 +378,9 @@
 </script>
 </body>
 </html>
+
+
+
+
+
+

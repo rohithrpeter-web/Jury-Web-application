@@ -107,11 +107,11 @@
   });
 
   //State -------------------------------------------------------------------------------------------------------------
-  let config       = null;
-  let candidates   = [];
-  let myScores     = {};
-  let selected     = null;
-  let draftScores  = {};
+  let config = null;
+  let candidates = [];
+  let myScores = {};
+  let selected = null;
+  let draftScores = {};
   let timerInterval = null;
 
   //Boot --------------------------------------------------------------------------------------------------------------
@@ -125,6 +125,7 @@
           body: JSON.stringify({ judgeId, password }),
         }),
       ]);
+
       config   = await cfgRes.json();
       myScores = await scoresRes.json();
 
@@ -137,7 +138,8 @@
 
       renderSidebar();
       updateProgress();
-    } catch (e) {
+    } 
+    catch (e) {
       showToast('Server error. Is server.js running?', true);
     }
   }
@@ -149,7 +151,10 @@
     if (!s || !s.submittedAt) return false;
     return Date.now() - s.submittedAt >= config.editWindowMs;
   }
-  function isSubmitted(candId) { return !!myScores[candId]?.submittedAt; }
+
+  function isSubmitted(candId) { 
+    return !!myScores[candId]?.submittedAt; 
+  }
 
   //Sidebar rendering -------------------------------------------------------------------------------------------------------------------
   function renderSidebar() {
@@ -161,7 +166,6 @@
       const scored   = !!myScores[cand.id];
       const locked   = isLocked(cand.id);
       const isActive = selected?.id === cand.id;
-
       const el = document.createElement('div');
       const ageColor = cand.ageGroup === 'Junior' ? '#4A9ECC' : cand.ageGroup === 'Youth' ? '#9B59B6' : '#E67E22';
 
@@ -174,6 +178,7 @@
         </div>
         <div><div class="status-dot ${locked ? 'locked' : scored ? 'scored' : ''}"></div></div>
       `;
+
       el.addEventListener('click', () => selectCandidate(cand));
       list.appendChild(el);
     });
@@ -191,13 +196,11 @@
 
   //Selecting a Candidate -------------------------------------------------------------------------------------------------------------
   function selectCandidate(cand) {
+
     clearInterval(timerInterval);
     selected = cand;
-
     const saved = myScores[cand.id];
-    draftScores = saved
-      ? { ...saved.scores }
-      : Object.fromEntries(config.categories.map(c => [String(c.id), 0]));
+    draftScores = saved ? { ...saved.scores } : Object.fromEntries(config.categories.map(c => [String(c.id), 0]));
 
     renderSidebar();
     renderScoringArea();
@@ -216,7 +219,6 @@
     const locked = isLocked(cand.id);
     const submitted = isSubmitted(cand.id);
     const area   = document.getElementById('scoring-area');
-
     const total = Object.values(draftScores).reduce((a, b) => a + b, 0);
     const avg   = (total / config.categories.length).toFixed(3);
 
@@ -321,7 +323,7 @@
 
   function updateTotalsDisplay() {
     const total = Object.values(draftScores).reduce((a, b) => a + b, 0);
-    const avg   = (total / config.categories.length).toFixed(3);
+    const avg = (total / config.categories.length).toFixed(3);
     const tv = document.getElementById('total-val');
     const av = document.getElementById('avg-val');
     if (tv) tv.innerHTML = `${total}<span> / ${config.categories.length * 10}</span>`;
@@ -331,7 +333,7 @@
   //Submit logic -------------------------------------------------------------------------------------------------------------------------------------
   async function submitScores() {
     const cand = selected;
-    const btn  = document.getElementById('btn-submit');
+    const btn = document.getElementById('btn-submit');
 
     //Checking if all categories have been scored above zero...
     const unscored = config.categories.filter(cat => !draftScores[cat.id] || draftScores[cat.id] <= 0);
@@ -341,7 +343,10 @@
       return;
     }
 
-    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    if (btn) { 
+      btn.disabled = true; 
+      btn.textContent = 'Saving…'; 
+    }
 
     try {
       const res = await fetch('/api/scores/submit', {
@@ -438,8 +443,8 @@ function showLeaderboard() {
 
 function renderLeaderboard() {
     const body = document.getElementById('leaderboard-body');
-
     const ageGroups = ['Junior', 'Youth', 'Adult'];
+
     const ageColors = {
       'Junior': { header: '#4A9ECC'},
       'Youth':  { header: '#9B59B6'},
@@ -458,8 +463,7 @@ function renderLeaderboard() {
           const scores = Object.values(entry.scores);
           const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
           return { ...c, avg: Math.round(avg * 100) / 100 };
-        })
-        .sort((a, b) => b.avg - a.avg);
+        }).sort((a, b) => b.avg - a.avg);
 
       const unscored = groupCandidates.filter(c => !(myScores[c.id] || myScores[String(c.id)]));
 
@@ -470,6 +474,7 @@ function renderLeaderboard() {
       while (i < scored.length) {
         const avg = scored[i].avg;
         const tieGroup = [];
+
         while (i < scored.length && scored[i].avg === avg) {
           tieGroup.push(scored[i]);
           i++;
@@ -497,9 +502,11 @@ function renderLeaderboard() {
 
       if (groups.length === 0 && unscored.length === 0) {
         html += `<div style="font-size:13px; color:var(--text-muted); padding: 8px 4px;">No contestants in this group.</div>`;
-      } else if (groups.length === 0) {
+      } 
+      else if (groups.length === 0) {
         html += `<div style="font-size:13px; color:var(--text-muted); padding: 8px 4px;">No scores submitted yet.</div>`;
-      } else {
+      } 
+      else {
         groups.forEach(group => {
           const rankClass = group.rank === 1 ? 'gold' : group.rank === 2 ? 'silver' : group.rank === 3 ? 'bronze' : 'other';
           const rankEmoji = group.rank === 1 ? '🥇' : group.rank === 2 ? '🥈' : group.rank === 3 ? '🥉' : `#${group.rank}`;

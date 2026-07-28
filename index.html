@@ -63,10 +63,10 @@
 
 
 //Judge login -------------------------------------------------------------------------------------------------------------------------------------
-const loginBtn      = document.getElementById('btn-login');
+const loginBtn = document.getElementById('btn-login');
 const usernameInput = document.getElementById('login-user');
 const passwordInput = document.getElementById('login-pass');
-const errorBox      = document.getElementById('login-error');
+const errorBox = document.getElementById('login-error');
 
 loginBtn.addEventListener('click', doLogin);
 usernameInput.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
@@ -89,6 +89,7 @@ async function doLogin() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password }),
         });
+
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Login failed');
 
@@ -98,7 +99,8 @@ async function doLogin() {
         sessionStorage.setItem('password',  password);
         window.location.href = 'app.html';
 
-    } catch (err) {
+    } 
+    catch (err) {
         passwordInput.value = '';
         showError(err.message || 'Login failed.');
         loginBtn.disabled = false;
@@ -114,12 +116,12 @@ function showError(message) {
 
 
 //Admin login ---------------------------------------------------------------------------------------------------------------------------------------
-const adminLink     = document.getElementById('admin-login-link');
-const adminBox      = document.getElementById('admin-box');
+const adminLink = document.getElementById('admin-login-link');
+const adminBox = document.getElementById('admin-box');
 const adminUserInput = document.getElementById('admin-user');
 const adminPassInput = document.getElementById('admin-pass-field');
-const adminError    = document.getElementById('admin-error');
-const adminBtn      = document.getElementById('btn-admin-login');
+const adminError = document.getElementById('admin-error');
+const adminBtn = document.getElementById('btn-admin-login');
 
 adminLink.addEventListener('click', e => {
     e.preventDefault();
@@ -138,7 +140,6 @@ async function doAdminLogin() {
 
     if (!username) { adminError.textContent = 'Enter admin username.'; adminError.style.display = 'block'; return; }
     if (!password) { adminError.textContent = 'Enter admin password.'; adminError.style.display = 'block'; return; }
-
     adminBtn.disabled = true;
     adminBtn.textContent = 'Verifying...';
 
@@ -148,6 +149,7 @@ async function doAdminLogin() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password }),
         });
+
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Invalid credentials');
 
@@ -156,7 +158,8 @@ async function doAdminLogin() {
         sessionStorage.setItem('adminPassword', password);
         window.location.href = 'admin.html';
 
-    } catch (err) {
+    } 
+    catch (err) {
         adminPassInput.value = '';
         adminError.textContent = err.message || 'Login failed.';
         adminError.style.display = 'block';
