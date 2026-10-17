@@ -1,4 +1,4 @@
-﻿# ------------------------------ Jury Web App -------------------------------
+﻿# ------------------------------ Jury Web App -----------------
 
 This web application is build for judges to grade contestants based on 7 Categories. Each judge will have their own "My Leaderboard" where they will be able to view the grades they have given to the contestants. There will also be an Admin account where the Admin will be able to view all the grades given by the judges for each contestants with the "Total grade Leaderboard".
 
